@@ -30,14 +30,19 @@ class SoftMaskedBertTrainer():
 
     def train(self, train_data, epoch):
         self.model.train()
-        self.iteration(epoch, train_data)
+        return self.iteration(epoch, train_data)
 
     def evaluate(self, val_data, epoch):
         self.model.eval()
-        self.iteration(epoch, val_data, train=False)
+        return self.iteration(epoch, val_data, train=False)
 
     def inference(self, test_data):
         self.model.eval()
+
+    def save(self, file_path):
+        torch.save(self.model.cpu(), file_path)
+        self.model.to(self.device)
+        print('Model save {}'.format(file_path))
 
     def iteration(self, epoch, data_loader, train=True):
         str_code = "train" if train else "val"
@@ -92,6 +97,7 @@ class SoftMaskedBertTrainer():
 
         print("EP%d_%s, avg_loss=" % (epoch, str_code), avg_loss / len(data_iter), "total_acc=",
               total_correct * 100.0 / total_element)
+        return avg_loss / len(data_iter)
 
 
 class BertDataset(Dataset):
@@ -155,13 +161,27 @@ class BertDataset(Dataset):
         return {key: torch.tensor(value) for key, value in output.items()}
 
 if __name__ == '__main__':
-    config = BertConfig.from_pretrained('data/chinese_wwm_pytorch/bert_config.json')
-    tokenizer = BertTokenizer.from_pretrained('data/chinese_wwm_pytorch/vocab.txt')
-    bert = BertModel.from_pretrained('data/chinese_wwm_pytorch/pytorch_model.bin', config=config)
     dataset = pd.read_csv('data/processed_data/all_same_765376/train.csv')
-    train_dataset = BertDataset(tokenizer, dataset, max_len=12)
-    train_data_loader = DataLoader(train_dataset, batch_size=320, num_workers=2)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    trainer = SoftMaskedBertTrainer(bert, tokenizer, device)
-    for e in range(10):
-        trainer.train(train_data_loader, e)
+    kf = KFold(n_splits=5, shuffle=True)
+    for k, (train_index, val_index) in enumerate(kf.split(range(len(dataset)))):
+        print('Start train {} ford'.format(k))
+        config = BertConfig.from_pretrained('data/chinese_wwm_pytorch/bert_config.json')
+        tokenizer = BertTokenizer.from_pretrained('data/chinese_wwm_pytorch/vocab.txt')
+        bert = BertModel.from_pretrained('data/chinese_wwm_pytorch/pytorch_model.bin', config=config)
+
+        train = dataset.iloc[train_index]
+        val = dataset.iloc[val_index]
+        train_dataset = BertDataset(tokenizer, train, max_len=10)
+        train_data_loader = DataLoader(train_dataset, batch_size=320, num_workers=2)
+        val_dataset = BertDataset(tokenizer, val, max_len=512)
+        val_data_loader = DataLoader(val_dataset, batch_size=320, num_workers=2)
+        trainer = SoftMaskedBertTrainer(bert, tokenizer, device)
+        best_loss = 100000
+        for e in range(10):
+            trainer.train(train_data_loader, e)
+            val_loss = trainer.evaluate(val_data_loader, e)
+            if best_loss > val_loss:
+                best_loss = val_loss
+                trainer.save('best_model_{}ford.pt'.format(k))
+                print('Best val loss {}'.format(best_loss))
