@@ -55,6 +55,6 @@ if __name__ == "__main__":
     print(len(set(dataset)))
 
 
-    save_data(dataset, 'data/processed_data/all_data_765376.txt')
-    save_data(list(set(dataset)), 'data/processed_data/nosame_data_330748.txt')
+    save_data(dataset, 'data/processed_data/all_same_765376/all_data_765376.txt')
+    save_data(list(set(dataset)), 'data/processed_data/no_same_330748/nosame_data_330748.txt')
 

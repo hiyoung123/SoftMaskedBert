@@ -2,8 +2,10 @@
 #-*- coding:utf-8 -*-
 
 import random
+import pandas as pd
 from pypinyin import lazy_pinyin
 from data_loader import load_dataset, save_data
+from sklearn.model_selection import train_test_split
 
 def is_china_char(ch):
     if u'\u4e00' <= ch <= u'\u9fff':
@@ -59,50 +61,79 @@ def load_pinyin_dict(file_path):
 
 def random_word(sentence, char_pinyin_dict, char_dict, confusion_dict=None):
     tokens = [x for x in sentence]
+    out = []
     for i, token in enumerate(sentence):
         if not is_china_char(token):
+            out.append(str(0))
             continue
         prob = random.random()
         if prob < 0.15:
             prob /= 0.15
-            # 谐音 65%
-            if prob < 0.85:
+            # 谐音 80%
+            if prob < 0.80:
                 candiation = char_pinyin_dict.get(''.join(lazy_pinyin(token)), {token:''})
                 candiation = sorted(candiation.items(), key=lambda x:x[1], reverse=True)
                 candiation = candiation[:int(len(candiation)/2+0.5)]
-                candiation = [x[0] for x in candiation]
+                candiation = [x[0] for x in candiation if x[0] != token]
+                if len(candiation) == 0:
+                    out.append(str(0))
+                    continue
                 tokens[i] = random.choice(candiation)
-            # 随机 10%
-            elif prob < 0.9:
-                candiation = sorted(char_dict.items(), key=lambda x:x[1], reverse=True)
-                candiation = candiation[:int(len(candiation)/2+0.5)]
-                candiation = [x[0] for x in candiation]
-                tokens[i] = random.choice(candiation)
-            # 删除 5%
-            elif prob < 0.95:
-                tokens[i] = ''
-            # 添加 5%
+            # 随机 20%
             else:
                 candiation = sorted(char_dict.items(), key=lambda x:x[1], reverse=True)
                 candiation = candiation[:int(len(candiation)/2+0.5)]
-                candiation = [x[0] for x in candiation]
-                tokens.insert(i+1, random.choice(candiation))
-    return ''.join(tokens)
+                candiation = [x[0] for x in candiation if x[0] != token]
+                if len(candiation) == 0:
+                    out.append(str(0))
+                    continue
+                tokens[i] = random.choice(candiation)
+            out.append(str(1))
+            # # 删除 5%
+            # elif prob < 0.95:
+            #     tokens[i] = ''
+            # # 添加 5%
+            # else:
+            #     candiation = sorted(char_dict.items(), key=lambda x:x[1], reverse=True)
+            #     candiation = candiation[:int(len(candiation)/2+0.5)]
+            #     candiation = [x[0] for x in candiation]
+            #     tokens.insert(i+1, random.choice(candiation))
+        else:
+            out.append(str(0))
+    return ''.join(tokens), ' '.join(out)
 
 
 def random_dataset(dataset, char_pinyin_dict, char_dict):
+    text = []
     out = []
     for ids, line in enumerate(dataset):
         print(ids)
-        line = random_word(line, char_pinyin_dict, char_dict)
-        out.append(line)
-    return out
+        line, label = random_word(line, char_pinyin_dict, char_dict)
+        text.append(line)
+        out.append(label)
+    return text, out
 
 
 if __name__ == '__main__':
-    dataset = load_dataset('data/processed_data/all_data_765376.txt')
+    dataset = load_dataset('data/processed_data/all_same_765376/all_data_765376.txt')
     char_dict = gen_char_dict(dataset)
     # gen_pinyin_dict(dataset, char_dict)
     char_pinyin_dict = load_pinyin_dict('data/pinyin2char.model')
-    process_dataset = random_dataset(dataset, char_pinyin_dict, char_dict)
-    save_data(process_dataset, 'data/processed_data/process_data_765376.txt')
+    process_dataset, process_label = random_dataset(dataset, char_pinyin_dict, char_dict)
+    # save_data(process_dataset, 'data/processed_data/process_data_765376.txt')
+    df = pd.DataFrame(columns=['origin_text','random_text','label'])
+    df['origin_text'] = dataset
+    df['random_text'] = process_dataset
+    df['label'] = process_label
+    df.to_csv('data/processed_data/processed_765376.csv', index=False)
+
+    # df = pd.read_csv('data/processed_data/all_same_765376/processed_765376.csv')
+
+    dataset = df.values
+    train, test = train_test_split(dataset, test_size=0.1)
+    df = pd.DataFrame(columns=['origin_text','random_text','label'], data=train)
+    df.to_csv('data/processed_data/all_same_765376/train.csv', index=False)
+    df = pd.DataFrame(columns=['origin_text','random_text','label'], data=test)
+    df.to_csv('data/processed_data/all_same_765376/test.csv', index=False)
+
+

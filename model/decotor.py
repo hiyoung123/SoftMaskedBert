@@ -22,10 +22,10 @@ class BiGRU(nn.Module):
         return prob
 
 
-# if __name__ == "__main__":
-#     model = BiGRU(2, 2, 2)
-#     text = torch.Tensor([[[1,1],[2,2],[3,3],[4,4]]])
-#     p = model(text)
-#     print(p)
-#     print(text * p)
-#     print(1-p)
+if __name__ == "__main__":
+    model = BiGRU(2, 2, 2)
+    text = torch.Tensor([[[1,1],[2,2],[3,3],[4,4]]])
+    p = model(text)
+    print(p)
+    print(text * p)
+    print(1-p)

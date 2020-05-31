@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from transformers import BertTokenizer, BertModel, BertConfig
 
-from decotor import BiGRU
+from .decotor import BiGRU
 
 class SoftMaskedBert(nn.Module):
     """
