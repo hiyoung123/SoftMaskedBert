@@ -23,6 +23,10 @@ class SoftMaskedBertTrainer():
         self.bert = bert
         self.model = SoftMaskedBert(self.bert, tokenizer, hidden, layer_n, self.device).to(self.device)
 
+        # if torch.cuda.device_count() > 1:
+        #     print("Using %d GPUS for train" % torch.cuda.device_count())
+        #     self.model = nn.DataParallel(self.model, device_ids=[0,1,2])
+
         self.optim = Adam(self.model.parameters(), lr=lr, betas=betas, weight_decay=weight_decay)
         self.optim_schedule = ScheduledOptim(self.optim, hidden, n_warmup_steps=warmup_steps)
         self.criterion_c = nn.NLLLoss()
@@ -175,9 +179,9 @@ if __name__ == '__main__':
         train = dataset.iloc[train_index]
         val = dataset.iloc[val_index]
         train_dataset = BertDataset(tokenizer, train, max_len=152)
-        train_data_loader = DataLoader(train_dataset, batch_size=32, num_workers=2)
+        train_data_loader = DataLoader(train_dataset, batch_size=8, num_workers=2)
         val_dataset = BertDataset(tokenizer, val, max_len=152)
-        val_data_loader = DataLoader(val_dataset, batch_size=32, num_workers=2)
+        val_data_loader = DataLoader(val_dataset, batch_size=8, num_workers=2)
         trainer = SoftMaskedBertTrainer(bert, tokenizer, device)
         best_loss = 100000
         for e in range(10):

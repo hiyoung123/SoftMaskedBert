@@ -7,6 +7,7 @@ from transformers import BertTokenizer, BertModel, BertConfig
 
 from .decotor import BiGRU
 
+
 class SoftMaskedBert(nn.Module):
     """
     Soft-Masked Bert
@@ -28,6 +29,8 @@ class SoftMaskedBert(nn.Module):
         self.softmax = nn.LogSoftmax(dim=-1)
 
     def forward(self, input_ids):
+        # device = input_ids.device
+        # self.mask_e = self.mask_e.to(device)
         e = self.embedding(input_ids)
         p = self.detector(e)
         e_ = p * self.mask_e + (1-p) * e
