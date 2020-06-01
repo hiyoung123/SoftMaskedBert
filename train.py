@@ -1,6 +1,7 @@
 #!usr/bin/env python
 #-*- coding:utf-8 -*-
 
+import os
 import tqdm
 import pandas as pd
 import torch
@@ -13,13 +14,14 @@ from torch.utils.data import DataLoader
 from model import SoftMaskedBert
 from sklearn.model_selection import KFold
 MAX_INPUT_LEN = 512
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 class SoftMaskedBertTrainer():
     def __init__(self, bert, tokenizer, device, hidden=256, layer_n=1, lr=2e-5, gama=0.8, betas=(0.9, 0.999), weight_decay=0.01, warmup_steps=10000):
 
         self.device = device
         self.bert = bert
-        self.model = SoftMaskedBert(bert, tokenizer, hidden, layer_n).to(self.device)
+        self.model = SoftMaskedBert(self.bert, tokenizer, hidden, layer_n, self.device).to(self.device)
 
         self.optim = Adam(self.model.parameters(), lr=lr, betas=betas, weight_decay=weight_decay)
         self.optim_schedule = ScheduledOptim(self.optim, hidden, n_warmup_steps=warmup_steps)
@@ -172,10 +174,10 @@ if __name__ == '__main__':
 
         train = dataset.iloc[train_index]
         val = dataset.iloc[val_index]
-        train_dataset = BertDataset(tokenizer, train, max_len=10)
-        train_data_loader = DataLoader(train_dataset, batch_size=320, num_workers=2)
-        val_dataset = BertDataset(tokenizer, val, max_len=512)
-        val_data_loader = DataLoader(val_dataset, batch_size=320, num_workers=2)
+        train_dataset = BertDataset(tokenizer, train, max_len=152)
+        train_data_loader = DataLoader(train_dataset, batch_size=32, num_workers=2)
+        val_dataset = BertDataset(tokenizer, val, max_len=152)
+        val_data_loader = DataLoader(val_dataset, batch_size=32, num_workers=2)
         trainer = SoftMaskedBertTrainer(bert, tokenizer, device)
         best_loss = 100000
         for e in range(10):

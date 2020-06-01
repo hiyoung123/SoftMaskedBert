@@ -12,17 +12,18 @@ class SoftMaskedBert(nn.Module):
     Soft-Masked Bert
     论文：https://arxiv.org/pdf/2005.07421.pdf
     """
-    def __init__(self, bert, tokenizer, hidden, layer_n):
+    def __init__(self, bert, tokenizer, hidden, layer_n, device):
         super(SoftMaskedBert, self).__init__()
         self.bert = bert
         self.tokenizer = tokenizer
-        self.embedding = bert.embeddings
+        self.embedding = bert.embeddings.to(device)
         self.config = bert.config
         self.embedding_size = self.config.to_dict()['hidden_size']
 
         self.detector = BiGRU(self.embedding_size, hidden, layer_n)
         self.corrector = bert.encoder
-        self.mask_e = self.embedding(torch.Tensor([[tokenizer.mask_token_id]]).long())
+        mask_token_id = torch.tensor([[tokenizer.mask_token_id]]).to(device)
+        self.mask_e = self.embedding(mask_token_id)
         self.linear = nn.Linear(self.embedding_size, self.config.vocab_size)
         self.softmax = nn.LogSoftmax(dim=-1)
 
