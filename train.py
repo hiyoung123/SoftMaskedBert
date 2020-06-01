@@ -21,7 +21,8 @@ class SoftMaskedBertTrainer():
 
         self.device = device
         self.bert = bert
-        self.model = SoftMaskedBert(self.bert, tokenizer, hidden, layer_n, self.device).to(self.device)
+        self.tokenizer = tokenizer
+        self.model = SoftMaskedBert(self.bert, self.tokenizer, hidden, layer_n, self.device).to(self.device)
 
         # if torch.cuda.device_count() > 1:
         #     print("Using %d GPUS for train" % torch.cuda.device_count())
@@ -42,13 +43,31 @@ class SoftMaskedBertTrainer():
         self.model.eval()
         return self.iteration(epoch, val_data, train=False)
 
-    def inference(self, test_data):
+    def inference(self, data_loader):
         self.model.eval()
+        out_put = []
+        data_iter = tqdm.tqdm(enumerate(data_loader),
+                              desc="%s" % 'Inference:',
+                              total=len(data_loader),
+                              bar_format="{l_bar}{r_bar}")
+        for i, data in data_iter:
+            # 0. batch_data will be sent into the device(GPU or cpu)
+            data = {key: value.to(self.device) for key, value in data.items()}
+
+            out, prob = self.model(data["random_text"]) #prob [batch_size, seq_len, 1]
+            out_put.extend(out.argmax(dim=-1))
+
+        return [self.tokenizer.convert_ids_to_tokens(x) for x in out_put]
 
     def save(self, file_path):
         torch.save(self.model.cpu(), file_path)
         self.model.to(self.device)
         print('Model save {}'.format(file_path))
+
+    def load(self, file_path):
+        if not os.path.exists(file_path):
+            return
+        self.model = torch.load(file_path)
 
     def iteration(self, epoch, data_loader, train=True):
         str_code = "train" if train else "val"
@@ -184,10 +203,13 @@ if __name__ == '__main__':
         val_data_loader = DataLoader(val_dataset, batch_size=8, num_workers=2)
         trainer = SoftMaskedBertTrainer(bert, tokenizer, device)
         best_loss = 100000
-        for e in range(10):
-            trainer.train(train_data_loader, e)
-            val_loss = trainer.evaluate(val_data_loader, e)
-            if best_loss > val_loss:
-                best_loss = val_loss
-                trainer.save('best_model_{}ford.pt'.format(k))
-                print('Best val loss {}'.format(best_loss))
+        # for e in range(10):
+        #     trainer.train(train_data_loader, e)
+        #     val_loss = trainer.evaluate(val_data_loader, e)
+        #     if best_loss > val_loss:
+        #         best_loss = val_loss
+        #         trainer.save('best_model_{}ford.pt'.format(k))
+        #         print('Best val loss {}'.format(best_loss))
+
+        trainer.load('best_model_0ford.pt')
+        print(trainer.inference(val_data_loader))
