@@ -17,7 +17,6 @@ class BiGRU(nn.Module):
 
     def forward(self, x):
         out, _ = self.rnn(x)
-        # out = out.permute(1, 0, 2)
         prob = self.sigmoid(self.linear(out))
         return prob
 

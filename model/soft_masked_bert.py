@@ -28,19 +28,17 @@ class SoftMaskedBert(nn.Module):
         self.linear = nn.Linear(self.embedding_size, self.config.vocab_size)
         self.softmax = nn.LogSoftmax(dim=-1)
 
-    def forward(self, input_ids):
-        # device = input_ids.device
-        # self.mask_e = self.mask_e.to(device)
-        e = self.embedding(input_ids)
+    def forward(self, input_ids, input_mask, segment_ids):
+        e = self.embedding(input_ids=input_ids, token_type_ids=segment_ids)
         p = self.detector(e)
         e_ = p * self.mask_e + (1-p) * e
         _, _, _, _, \
-        extended_attention_mask, \
+        _, \
         head_mask, \
         encoder_hidden_states, \
         encoder_extended_attention_mask= self._init_inputs(input_ids)
         h = self.corrector(e_,
-                           attention_mask=extended_attention_mask,
+                           attention_mask=input_mask,
                            head_mask=head_mask,
                            encoder_hidden_states=encoder_hidden_states,
                            encoder_attention_mask=encoder_extended_attention_mask)
