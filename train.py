@@ -161,12 +161,13 @@ class BertDataset(Dataset):
             label = [0] + label[:min(len(label), self.max_len - 2)] + [0]
 
             output_ids = self.tokenizer.convert_tokens_to_ids(output_ids)
+            pad_label_len = self.max_len - len(label)
             if self.pad_first:
                 output_ids = [0] * pad_len + output_ids
-                label = [0] * pad_len + label
+                label = [0] * pad_label_len + label
             else:
                 output_ids = output_ids + [0] * pad_len
-                label = label + [0] * pad_len
+                label = label + [0] * pad_label_len
 
             output = {
                 'input_ids': input_ids,
@@ -175,7 +176,6 @@ class BertDataset(Dataset):
                 'output_ids': output_ids,
                 'label': label
             }
-
         return {key: torch.tensor(value) for key, value in output.items()}
 
 if __name__ == '__main__':
