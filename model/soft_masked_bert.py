@@ -36,9 +36,9 @@ class SoftMaskedBert(nn.Module):
         _, \
         head_mask, \
         encoder_hidden_states, \
-        encoder_extended_attention_mask= self._init_inputs(input_ids)
+        encoder_extended_attention_mask= self._init_inputs(input_ids, input_mask)
         h = self.corrector(e_,
-                           attention_mask=input_mask,
+                           attention_mask=encoder_extended_attention_mask,
                            head_mask=head_mask,
                            encoder_hidden_states=encoder_hidden_states,
                            encoder_attention_mask=encoder_extended_attention_mask)

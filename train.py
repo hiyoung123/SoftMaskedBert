@@ -158,9 +158,9 @@ class BertDataset(Dataset):
         if self.mode == 'train':
             output_ids = item['origin_text']
             label = item['label']
-
+            label = [int(x) for x in label if x != ' ']
             output_ids = ['[CLS]'] + list(output_ids)[:min(len(output_ids), self.max_len - 2)] + ['[SEP]']
-            label = [0] + list(label)[:min(len(label), self.max_len - 2)] + [0]
+            label = [0] + label[:min(len(label), self.max_len - 2)] + [0]
 
             output_ids = self.tokenizer.convert_tokens_to_ids(output_ids)
             if self.pad_first:
