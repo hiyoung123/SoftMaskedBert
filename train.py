@@ -73,7 +73,7 @@ class SoftMaskedBertTrainer():
         str_code = "train" if train else "val"
 
         # Setting the tqdm progress bar
-        data_iter = tqdm.tqdm(enumerate(data_loader),
+        data_loader = tqdm.tqdm(enumerate(data_loader),
                               desc="EP_%s:%d" % (str_code, epoch),
                               total=len(data_loader),
                               bar_format="{l_bar}{r_bar}")
@@ -82,7 +82,7 @@ class SoftMaskedBertTrainer():
         total_correct = 0
         total_element = 0
 
-        for i, data in data_iter:
+        for i, data in data_loader:
             # 0. batch_data will be sent into the device(GPU or cpu)
             data = {key: value.to(self.device) for key, value in data.items()}
 
@@ -111,11 +111,11 @@ class SoftMaskedBertTrainer():
             }
 
             if i % self.log_freq == 0:
-                data_iter.write(str(post_fix))
+                data_loader.write(str(post_fix))
 
-        print("EP%d_%s, avg_loss=" % (epoch, str_code), avg_loss / len(data_iter), "total_acc=",
+        print("EP%d_%s, avg_loss=" % (epoch, str_code), avg_loss / len(data_loader), "total_acc=",
               total_correct * 100.0 / total_element)
-        return avg_loss / len(data_iter)
+        return avg_loss / len(data_loader)
 
 
 class BertDataset(Dataset):
@@ -132,10 +132,10 @@ class BertDataset(Dataset):
 
     def __getitem__(self, item):
         item = self.dataset.iloc[item]
-        random_text = item['random_text']
-        random_text = ['[CLS]'] + list(random_text)[:min(len(random_text), self.max_len - 2)] + ['[SEP]']
+        input_ids = item['random_text']
+        input_ids = ['[CLS]'] + list(input_ids)[:min(len(input_ids), self.max_len - 2)] + ['[SEP]']
         # convert to bert ids
-        input_ids = self.tokenizer.convert_tokens_to_ids(random_text)
+        input_ids = self.tokenizer.convert_tokens_to_ids(input_ids)
         input_mask = [1] * len(input_ids)
         segment_ids = [0] * len(input_ids)
 
@@ -156,13 +156,13 @@ class BertDataset(Dataset):
         }
 
         if self.mode == 'train':
-            origin_text = item['origin_text']
+            output_ids = item['origin_text']
             label = item['label']
 
-            origin_text = ['[CLS]'] + list(origin_text)[:min(len(origin_text), self.max_len - 2)] + ['[SEP]']
+            output_ids = ['[CLS]'] + list(output_ids)[:min(len(output_ids), self.max_len - 2)] + ['[SEP]']
             label = [0] + list(label)[:min(len(label), self.max_len - 2)] + [0]
 
-            output_ids = self.tokenizer.convert_tokens_to_ids(origin_text)
+            output_ids = self.tokenizer.convert_tokens_to_ids(output_ids)
             if self.pad_first:
                 output_ids = [0] * pad_len + output_ids
                 label = [0] * pad_len + label
@@ -192,19 +192,19 @@ if __name__ == '__main__':
 
         train = dataset.iloc[train_index]
         val = dataset.iloc[val_index]
-        train_dataset = BertDataset(tokenizer, train, max_len=152)
-        train_data_loader = DataLoader(train_dataset, batch_size=8, num_workers=2)
-        val_dataset = BertDataset(tokenizer, val, max_len=152)
-        val_data_loader = DataLoader(val_dataset, batch_size=8, num_workers=2)
+        train = BertDataset(tokenizer, train, max_len=152)
+        train = DataLoader(train, batch_size=8, num_workers=2)
+        val = BertDataset(tokenizer, val, max_len=152)
+        val = DataLoader(val, batch_size=8, num_workers=2)
         trainer = SoftMaskedBertTrainer(bert, tokenizer, device)
         best_loss = 100000
         for e in range(100):
-            trainer.train(train_data_loader, e)
-            val_loss = trainer.evaluate(val_data_loader, e)
+            trainer.train(train, e)
+            val_loss = trainer.evaluate(val, e)
             if best_loss > val_loss:
                 best_loss = val_loss
                 trainer.save('best_model_{}ford.pt'.format(k))
                 print('Best val loss {}'.format(best_loss))
 
             trainer.load('best_model_{}ford.pt'.format(k))
-            print(trainer.inference(val_data_loader))
+            print(trainer.inference(val))
