@@ -55,8 +55,7 @@ class SoftMaskedBertTrainer():
 
             out, prob = self.model(data["input_ids"], data["input_mask"], data["segment_ids"]) #prob [batch_size, seq_len, 1]
             out_put.extend(out.argmax(dim=-1))
-
-        return self.tokenizer.convert_ids_to_tokens(out_put)
+        return '\n'.join([self.tokenizer.convert_ids_to_tokens(x) for x in out_put])
 
     def save(self, file_path):
         torch.save(self.model.cpu(), file_path)
