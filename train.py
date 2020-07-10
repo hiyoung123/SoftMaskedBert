@@ -54,7 +54,7 @@ class SoftMaskedBertTrainer():
             data = {key: value.to(self.device) for key, value in data.items()}
 
             out, prob = self.model(data["input_ids"], data["input_mask"], data["segment_ids"]) #prob [batch_size, seq_len, 1]
-            out_put.extend(out.argmax(dim=-1))
+            out_put.extend(out.argmax(dim=-1).cpu().numpy().tolist())
         return [''.join(self.tokenizer.convert_ids_to_tokens(x)) for x in out_put]
 
     def save(self, file_path):
@@ -66,6 +66,7 @@ class SoftMaskedBertTrainer():
         if not os.path.exists(file_path):
             return
         self.model = torch.load(file_path)
+        self.model.to(self.device)
 
     def iteration(self, epoch, data_loader, train=True):
         str_code = "train" if train else "val"
