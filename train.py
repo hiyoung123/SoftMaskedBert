@@ -32,7 +32,7 @@ class SoftMaskedBertTrainer():
         self.criterion_c = nn.NLLLoss()
         self.criterion_d = nn.BCELoss()
         self.gama = gama
-        self.log_freq = 10
+        self.log_freq = 100
 
     def train(self, train_data, epoch):
         self.model.train()
@@ -113,15 +113,15 @@ class SoftMaskedBertTrainer():
                 "epoch": epoch,
                 "iter": i,
                 "avg_loss": avg_loss / (i + 1),
-                "d_acc": d_correct / total_element * 100,
-                "c_acc": c_correct / total_element * 100
+                "d_acc": d_correct / total_element,
+                "c_acc": c_correct / total_element
             }
 
             if i % self.log_freq == 0:
                 data_loader.write(str(post_fix))
 
         print("EP%d_%s, avg_loss=" % (epoch, str_code), avg_loss / len(data_loader), "d_acc=",
-              d_correct * 100.0 / total_element, "c_acc", c_correct * 100.0 / total_element)
+              d_correct / total_element, "c_acc", c_correct / total_element)
         return avg_loss / len(data_loader)
 
 
