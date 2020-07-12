@@ -78,8 +78,10 @@ class SoftMaskedBertTrainer():
                               bar_format="{l_bar}{r_bar}")
 
         avg_loss = 0.0
-        total_correct = 0
+        # total_correct = 0
         total_element = 0
+        c_correct = 0
+        d_correct = 0
 
         for i, data in data_loader:
             # 0. batch_data will be sent into the device(GPU or cpu)
@@ -96,24 +98,30 @@ class SoftMaskedBertTrainer():
                 loss.backward(retain_graph=True)
                 self.optim_schedule.step_and_update_lr()
 
-            correct = out.argmax(dim=-1).eq(data["output_ids"]).sum().item()
+            # correct = out.argmax(dim=-1).eq(data["output_ids"]).sum().item()
+            out = out.argmax(dim=-1)
+            c_correct += sum([out[i].equal(data['output_ids'][i]) for i in range(len(out))])
+            prob = torch.round(prob).long()
+            d_correct += sum([prob[i].equal(data['label'][i]) for i in range(len(prob))])
+
             avg_loss += loss.item()
-            total_correct += correct
-            total_element += data["label"].nelement()
+        #     total_correct += c_correct
+        #     # total_element += data["label"].nelement()
+            total_element += len(data)
 
             post_fix = {
                 "epoch": epoch,
                 "iter": i,
                 "avg_loss": avg_loss / (i + 1),
-                "avg_acc": total_correct / total_element * 100,
-                "loss": loss.item()
+                "d_acc": d_correct / total_element * 100,
+                "c_acc": c_correct / total_element * 100
             }
 
             if i % self.log_freq == 0:
                 data_loader.write(str(post_fix))
 
-        print("EP%d_%s, avg_loss=" % (epoch, str_code), avg_loss / len(data_loader), "total_acc=",
-              total_correct * 100.0 / total_element)
+        print("EP%d_%s, avg_loss=" % (epoch, str_code), avg_loss / len(data_loader), "d_acc=",
+              d_correct * 100.0 / total_element, "c_acc", c_correct * 100.0 / total_element)
         return avg_loss / len(data_loader)
 
 
@@ -192,9 +200,9 @@ if __name__ == '__main__':
         train = dataset.iloc[train_index]
         val = dataset.iloc[val_index]
         train = BertDataset(tokenizer, train, max_len=152)
-        train = DataLoader(train, batch_size=16, num_workers=2)
+        train = DataLoader(train, batch_size=8, num_workers=2)
         val = BertDataset(tokenizer, val, max_len=152)
-        val = DataLoader(val, batch_size=16, num_workers=2)
+        val = DataLoader(val, batch_size=8, num_workers=2)
         trainer = SoftMaskedBertTrainer(bert, tokenizer, device)
         best_loss = 100000
         for e in range(100):
